@@ -43,6 +43,15 @@ const NSTimeInterval _YYWebImageProgressiveFadeTime = 0.4;
     [_operation cancel];
 }
 
+/**
+ 1. 如果传入的 sentinel 与当前持有的 sentinel 不相等，则取消，返回 sentinel 旧值
+ 2. 根据传入 imageURL 创建新的 operation
+ 3. 如果 !operation，则返回无
+ 4. 上锁
+ 5. 取消当前持有的 operation，sentinel 自增 1
+ 6. 释放锁
+ 7. 返回 sentinel 新值
+ */
 - (int32_t)setOperationWithSentinel:(int32_t)sentinel
                                 url:(NSURL *)imageURL
                             options:(YYWebImageOptions)options
@@ -77,6 +86,11 @@ const NSTimeInterval _YYWebImageProgressiveFadeTime = 0.4;
     return [self cancelWithNewURL:nil];
 }
 
+/**
+ 1. 取消当前 operation
+ 2. 自增 _sentinel
+ 3. 返回 sentinel 的新值
+ */
 - (int32_t)cancelWithNewURL:(NSURL *)imageURL {
     int32_t sentinel;
     dispatch_semaphore_wait(_lock, DISPATCH_TIME_FOREVER);

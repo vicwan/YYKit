@@ -14,6 +14,19 @@
 NS_ASSUME_NONNULL_BEGIN
 
 /**
+ YYMemoryCache 与 NSCache 的不同：
+ 1. YYMemoryCache 中对象的移除遵循 LRU，而 NSCache 的移除则不确定；
+ 2. YYMemoryCache 可以根据 cost（容量消耗），count（对象数量），age（过期时间）进行控制，而 NSCache 则不精确；
+ 3. YYMemoryCache 可配置为在 App 收到内存警告时或者进入后台时，自动清理缓存对象；
+ 4. 两者在 limit 上都 not strict。如果 cache 超过了预设的 limit，那么一些对象将会于一段时间之后在后台线程被清理；
+ 
+ 特点：
+ 1. 所有的访问均为 O(1) 的时间复杂度
+ 2. 与 NSDictionary 相比，YYMemoryCache 对其所有的 key 都是 retain，而不是 copy
+ 3. API 与 NSCache 类似，且所有的方法均为 thread-safe
+ */
+
+/**
  YYMemoryCache is a fast in-memory cache that stores key-value pairs.
  In contrast to NSDictionary, keys are retained and not copied.
  The API and performance is similar to `NSCache`, all methods are thread-safe.
@@ -29,7 +42,7 @@ NS_ASSUME_NONNULL_BEGIN
  The time of `Access Methods` in YYMemoryCache is typically in constant time (O(1)).
  */
 @interface YYMemoryCache : NSObject
-
+//FIXME: TODO: 为什么属性修饰符没有写 nonatomic
 #pragma mark - Attribute
 ///=============================================================================
 /// @name Attribute

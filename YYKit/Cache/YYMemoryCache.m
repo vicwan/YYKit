@@ -215,8 +215,7 @@ static inline dispatch_queue_t YYMemoryCacheGetReleaseQueue() {
         finish = YES;
     }
     pthread_mutex_unlock(&_lock);
-    if (finish) return;
-    
+    if (finish) return;  /** 设置递归退出条件 */
     NSMutableArray *holder = [NSMutableArray new];
     while (!finish) {
         if (pthread_mutex_trylock(&_lock) == 0) {
@@ -235,6 +234,20 @@ static inline dispatch_queue_t YYMemoryCacheGetReleaseQueue() {
         dispatch_queue_t queue = _lru->_releaseOnMainThread ? dispatch_get_main_queue() : YYMemoryCacheGetReleaseQueue();
         dispatch_async(queue, ^{
             [holder count]; // release in queue
+            
+            //FIXME: TODO: 关于对象释放的讨论
+            
+            /**
+             https://blog.ibireme.com/2015/10/26/yycache/
+             
+             网友1：这个代码,为什么要求下count呢?
+             
+             ibireme：holder 持有了待释放的对象，这些对象应该根据配置在不同线程进行释放(release)。此处 holder 被 block 持有，然后在另外的 queue 中释放。[holder count] 只是为了让 holder 被 block 捕获，保证编译器不会优化掉这个操作，所以随便调用了一个方法。
+             
+             网友2：因为OC对象的释放也是比较性能的，我想博主的目的是把OC对象放到子线程中去release是出于对性能的考虑。这在博主的《iOS 保持界面流畅的技巧》（http://blog.ibireme.com/2015/11/12/smooth_user_interfaces_for_ios/）一文中也有所提到。感叹博主的设计技巧。手动崇拜！
+             
+             网友3：调用 [holder count] 方法只是让主队列或者YYMemoryCacheGetReleaseQueue持有里边对象，并且在指定的队列中进行release
+             */
         });
     }
 }
@@ -344,7 +357,7 @@ static inline dispatch_queue_t YYMemoryCacheGetReleaseQueue() {
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_appDidReceiveMemoryWarningNotification) name:UIApplicationDidReceiveMemoryWarningNotification object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_appDidEnterBackgroundNotification) name:UIApplicationDidEnterBackgroundNotification object:nil];
     
-    [self _trimRecursively];
+    [self _trimRecursively];    // 触发自动清理。默认每 5 秒清理一次
     return self;
 }
 
@@ -458,6 +471,14 @@ static inline dispatch_queue_t YYMemoryCacheGetReleaseQueue() {
         } else if (_lru->_releaseOnMainThread && !pthread_main_np()) {
             dispatch_async(dispatch_get_main_queue(), ^{
                 [node class]; //hold and release in queue
+                
+                //FIXME: TODO: 没看懂这个 release？
+                
+                /**
+                [node class]; 这种在queue上调用对象的方法，能保证node是在这个queue上release掉，这个确定么？
+                作者回答：你可以给 node 加个 dealloc 下断点看看。
+                群众回答：应该是node在执行完这个方法后就出了作用域了，reference会减1，但是此时node不会被dealloc，因为block 中retain了node，使得node的reference count为1，当执完block后，node的reference count又-1，此时node就会在block对应的queue上release了,的确很巧妙
+                 */
             });
         }
     }

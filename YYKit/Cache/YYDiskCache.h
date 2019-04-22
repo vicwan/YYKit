@@ -14,6 +14,14 @@
 NS_ASSUME_NONNULL_BEGIN
 
 /**
+ YYDiskCache 特点：
+ 1. 线程安全，基于 SQLite 和 文件系统进行磁盘缓存；
+ 2. 根据 LRU 算法移除缓存对象；
+ 3. 当磁盘空间不足时，缓存对象可配置为自动清除；
+ 4. 根据对象的不同自动选择合适的存储类型（SQLite/file）
+ */
+
+/**
  YYDiskCache is a thread-safe cache that stores key-value pairs backed by SQLite
  and file system (similar to NSURLCache's disk cache).
  
